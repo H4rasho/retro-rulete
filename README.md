@@ -1,15 +1,20 @@
 # 🎡 Ruleta de Retrospectiva Scrum
 
-Una aplicación interactiva de Next.js para facilitar retrospectivas de Scrum mediante una ruleta animada con preguntas de reflexión para equipos ágiles.
+Una aplicación interactiva de Next.js para facilitar retrospectivas de Scrum mediante una ruleta animada con preguntas de reflexión para equipos ágiles. **¡Ahora con colaboración en tiempo real!**
 
 ## ✨ Características
 
 - 🎨 **Diseño moderno** - UI construida con shadcn/ui y Tailwind CSS
 - 🎡 **Ruleta animada** - Animación suave con 18 preguntas de retrospectiva
+- 👥 **Colaboración en tiempo real** - Múltiples participantes trabajando simultáneamente
+- 🔄 **Sincronización automática** - Powered by Supabase Realtime
+- 🎯 **Ruletas individuales** - Cada participante tiene su propia ruleta
+- 👨‍💼 **Vista de moderador** - El moderador ve todas las respuestas en tiempo real
 - 📝 **Banco de preguntas** - Preguntas clásicas de retrospectiva Scrum
-- 📊 **Historial** - Seguimiento de las últimas 5 preguntas seleccionadas
+- 📊 **Historial** - Cada participante ve sus propias respuestas guardadas
 - 📱 **Responsivo** - Funciona perfectamente en móvil, tablet y desktop
 - ⚡ **Rendimiento** - Optimizado con Next.js 15 y React Server Components
+- 💾 **Exportación** - Exporta todos los resultados a archivo de texto
 
 ## 🎯 Preguntas Incluidas
 
@@ -27,23 +32,30 @@ La ruleta incluye 18 preguntas de retrospectiva, como:
 
 - Node.js 18.17 o superior
 - npm, yarn, pnpm o bun
+- Cuenta de Supabase (gratuita)
 
 ### Instalación
 
 1. Clona el repositorio
+
 2. Instala las dependencias:
 
 ```bash
 npm install
 ```
 
-3. Ejecuta el servidor de desarrollo:
+3. **Configura Supabase** (Ver [SETUP_SUPABASE.md](SETUP_SUPABASE.md) para instrucciones detalladas):
+   - Crea un proyecto en [Supabase](https://supabase.com)
+   - Ejecuta el script SQL de `supabase_schema.sql` en tu proyecto
+   - Copia `env.example` a `.env.local` y agrega tus credenciales
+
+4. Ejecuta el servidor de desarrollo:
 
 ```bash
 npm run dev
 ```
 
-4. Abre [http://localhost:3000](http://localhost:3000) en tu navegador
+5. Abre [http://localhost:3000](http://localhost:3000) en tu navegador
 
 ## 🛠️ Stack Tecnológico
 
@@ -51,7 +63,39 @@ npm run dev
 - **UI**: [shadcn/ui](https://ui.shadcn.com/)
 - **Estilos**: [Tailwind CSS](https://tailwindcss.com/)
 - **Lenguaje**: [TypeScript](https://www.typescriptlang.org/)
+- **Base de Datos**: [Supabase](https://supabase.com/) (PostgreSQL + Realtime)
 - **Fuentes**: [Geist Font Family](https://vercel.com/font)
+
+## 🎮 Cómo Usar
+
+### Crear una Sesión (Moderador)
+
+1. En la página principal, haz clic en **"Crear Nueva Sesión"**
+2. Ingresa un nombre para la retrospectiva (ej: "Sprint 15 - Retro")
+3. Ingresa tu nombre
+4. Haz clic en **"Crear Sesión"**
+5. Comparte el **código de 6 caracteres** con tu equipo
+
+### Unirse a una Sesión (Participante)
+
+1. En la página principal, haz clic en **"Unirse a Sesión"**
+2. Ingresa el código compartido por el moderador
+3. Ingresa tu nombre
+4. Haz clic en **"Unirse a Sesión"**
+
+### Durante la Retrospectiva
+
+- **Gira tu ruleta**: Haz clic en el botón para girar y obtener una pregunta aleatoria
+- **Responde**: Escribe tu respuesta en el campo de texto
+- **Guarda**: Las respuestas se sincronizan automáticamente
+- **Continúa**: Puedes girar la ruleta cuantas veces quieras
+
+### Finalizar Sesión (Solo Moderador)
+
+1. Haz clic en **"Finalizar Sesión"**
+2. Automáticamente serás redirigido a la vista de resultados
+3. Ve todas las respuestas de todos los participantes
+4. Exporta los resultados a un archivo de texto
 
 ## 📦 Estructura del Proyecto
 
@@ -59,26 +103,27 @@ npm run dev
 scrum-retro-wheel/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx       # Layout principal
-│   │   ├── page.tsx         # Página de inicio
-│   │   └── globals.css      # Estilos globales
+│   │   ├── layout.tsx                 # Layout principal
+│   │   ├── page.tsx                   # Página de lobby/inicio
+│   │   ├── session/[code]/page.tsx    # Página de sesión activa
+│   │   ├── moderator/[code]/page.tsx  # Vista de resultados del moderador
+│   │   └── globals.css                # Estilos globales
 │   ├── components/
-│   │   ├── ui/              # Componentes shadcn/ui
-│   │   └── RetroWheel.tsx   # Componente de la ruleta
-│   └── lib/
-│       └── utils.ts         # Utilidades
-├── public/                  # Archivos estáticos
-└── README.md               # Este archivo
+│   │   ├── ui/                        # Componentes shadcn/ui
+│   │   ├── SessionLobby.tsx           # Lobby para crear/unirse
+│   │   ├── RetroWheel.tsx             # Ruleta original (standalone)
+│   │   └── RetroWheelCollaborative.tsx # Ruleta colaborativa
+│   ├── lib/
+│   │   ├── utils.ts                   # Utilidades
+│   │   └── supabase.ts                # Cliente y funciones de Supabase
+│   └── types/
+│       └── database.ts                # Tipos TypeScript para la DB
+├── public/                            # Archivos estáticos
+├── supabase_schema.sql                # Schema de la base de datos
+├── SETUP_SUPABASE.md                  # Guía de configuración
+├── env.example                        # Ejemplo de variables de entorno
+└── README.md                          # Este archivo
 ```
-
-## 🎮 Cómo Usar
-
-1. Haz clic en el botón **"Girar la Ruleta"**
-2. Espera a que la ruleta se detenga (aproximadamente 4 segundos)
-3. La pregunta seleccionada aparecerá destacada debajo de la ruleta
-4. Discute la pregunta con tu equipo
-5. El historial muestra las últimas 5 preguntas para referencia
-6. Usa el botón **"Reiniciar"** para limpiar el historial y empezar de nuevo
 
 ## 🎨 Personalización
 
