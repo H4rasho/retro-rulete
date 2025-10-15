@@ -27,8 +27,21 @@ export interface Answer {
   created_at: string;
 }
 
+export interface Reaction {
+  id: string;
+  answer_id: string;
+  participant_id: string;
+  created_at: string;
+}
+
+export interface AnswerWithReactions extends Answer {
+  reactions: Reaction[];
+  reaction_count: number;
+  has_reacted: boolean;
+}
+
 export interface ParticipantWithAnswers extends Participant {
-  answers: Answer[];
+  answers: AnswerWithReactions[];
 }
 
 export interface SessionData extends Session {

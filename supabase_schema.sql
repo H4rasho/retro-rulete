@@ -31,16 +31,28 @@ CREATE TABLE answers (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Tabla de Reacciones (corazones)
+CREATE TABLE reactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  answer_id UUID REFERENCES answers(id) ON DELETE CASCADE,
+  participant_id UUID REFERENCES participants(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(answer_id, participant_id) -- Un participante solo puede dar un corazón por respuesta
+);
+
 -- Índices para mejorar el rendimiento
 CREATE INDEX idx_sessions_code ON sessions(code);
 CREATE INDEX idx_participants_session ON participants(session_id);
 CREATE INDEX idx_answers_session ON answers(session_id);
 CREATE INDEX idx_answers_participant ON answers(participant_id);
+CREATE INDEX idx_reactions_answer ON reactions(answer_id);
+CREATE INDEX idx_reactions_participant ON reactions(participant_id);
 
 -- Habilitar Row Level Security (RLS)
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE answers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reactions ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS - Permitir lectura pública (para simplificar, puedes ajustar según necesites)
 CREATE POLICY "Permitir lectura de sesiones" ON sessions FOR SELECT USING (true);
@@ -54,6 +66,10 @@ CREATE POLICY "Permitir lectura de respuestas" ON answers FOR SELECT USING (true
 CREATE POLICY "Permitir creación de respuestas" ON answers FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir actualización de respuestas" ON answers FOR UPDATE USING (true);
 CREATE POLICY "Permitir eliminación de respuestas" ON answers FOR DELETE USING (true);
+
+CREATE POLICY "Permitir lectura de reacciones" ON reactions FOR SELECT USING (true);
+CREATE POLICY "Permitir creación de reacciones" ON reactions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir eliminación de reacciones" ON reactions FOR DELETE USING (true);
 
 -- Función para generar código de sesión único
 CREATE OR REPLACE FUNCTION generate_session_code()
@@ -96,6 +112,7 @@ CREATE TRIGGER set_finished_at
 ALTER PUBLICATION supabase_realtime ADD TABLE sessions;
 ALTER PUBLICATION supabase_realtime ADD TABLE participants;
 ALTER PUBLICATION supabase_realtime ADD TABLE answers;
+ALTER PUBLICATION supabase_realtime ADD TABLE reactions;
 
 -- Nota: Si el comando anterior falla, intenta con:
 -- ALTER publication supabase_realtime SET (publish = 'insert, update, delete');

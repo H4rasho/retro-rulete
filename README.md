@@ -9,9 +9,11 @@ Una aplicación interactiva de Next.js para facilitar retrospectivas de Scrum me
 - 👥 **Colaboración en tiempo real** - Múltiples participantes trabajando simultáneamente
 - 🔄 **Sincronización automática** - Powered by Supabase Realtime
 - 🎯 **Ruletas individuales** - Cada participante tiene su propia ruleta
-- 👨‍💼 **Vista de moderador** - El moderador ve todas las respuestas en tiempo real
+- 👨‍💼 **Vista de moderador** - El moderador gestiona la sesión
 - 📝 **Banco de preguntas** - Preguntas clásicas de retrospectiva Scrum
 - 📊 **Historial** - Cada participante ve sus propias respuestas guardadas
+- 🎉 **Resultados compartidos** - Al finalizar, todos ven las respuestas de todos
+- ❤️ **Reacciones en tiempo real** - Sistema de "me gusta" con corazones para cada respuesta
 - 📱 **Responsivo** - Funciona perfectamente en móvil, tablet y desktop
 - ⚡ **Rendimiento** - Optimizado con Next.js 15 y React Server Components
 - 💾 **Exportación** - Exporta todos los resultados a archivo de texto
@@ -93,9 +95,11 @@ npm run dev
 ### Finalizar Sesión (Solo Moderador)
 
 1. Haz clic en **"Finalizar Sesión"**
-2. Automáticamente serás redirigido a la vista de resultados
-3. Ve todas las respuestas de todos los participantes
-4. Exporta los resultados a un archivo de texto
+2. Todos los participantes son automáticamente redirigidos a la página de resultados
+3. **TODOS** pueden ver las respuestas de **TODOS**
+4. **TODOS** pueden reaccionar con ❤️ a las respuestas que les gusten
+5. Las reacciones se actualizan en tiempo real
+6. El moderador puede exportar los resultados a un archivo de texto
 
 ## 📦 Estructura del Proyecto
 
@@ -106,7 +110,8 @@ scrum-retro-wheel/
 │   │   ├── layout.tsx                 # Layout principal
 │   │   ├── page.tsx                   # Página de lobby/inicio
 │   │   ├── session/[code]/page.tsx    # Página de sesión activa
-│   │   ├── moderator/[code]/page.tsx  # Vista de resultados del moderador
+│   │   ├── results/[code]/page.tsx    # Resultados compartidos con reacciones
+│   │   ├── moderator/[code]/page.tsx  # Vista administrativa del moderador
 │   │   └── globals.css                # Estilos globales
 │   ├── components/
 │   │   ├── ui/                        # Componentes shadcn/ui
@@ -119,7 +124,8 @@ scrum-retro-wheel/
 │   └── types/
 │       └── database.ts                # Tipos TypeScript para la DB
 ├── public/                            # Archivos estáticos
-├── supabase_schema.sql                # Schema de la base de datos
+├── supabase_schema.sql                # Schema de la base de datos (4 tablas)
+├── verify_realtime.sql                # Script de verificación
 ├── SETUP_SUPABASE.md                  # Guía de configuración
 ├── env.example                        # Ejemplo de variables de entorno
 └── README.md                          # Este archivo

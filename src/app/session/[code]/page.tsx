@@ -110,27 +110,13 @@ export default function SessionPage() {
   }
 
   if (session.status === 'finished') {
+    // Redirigir automáticamente a la página de resultados
+    router.push(`/results/${session.code}`);
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Sesión Finalizada</h2>
-          <p className="text-gray-600 mb-6">
-            Esta sesión ha sido finalizada por el moderador.
-          </p>
-          {participant.is_moderator && (
-            <button
-              onClick={() => router.push(`/moderator/${session.code}`)}
-              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 mr-2"
-            >
-              Ver Resultados
-            </button>
-          )}
-          <button
-            onClick={() => router.push('/')}
-            className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-          >
-            Volver al Inicio
-          </button>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirigiendo a resultados...</p>
         </div>
       </div>
     );

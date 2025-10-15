@@ -151,6 +151,66 @@ export async function getParticipantCount(sessionId: string) {
   return count || 0;
 }
 
+// Funciones de Reacciones
+export async function toggleReaction(answerId: string, participantId: string) {
+  // Verificar si ya existe la reacción
+  const { data: existing, error: checkError } = await supabase
+    .from('reactions')
+    .select('id')
+    .eq('answer_id', answerId)
+    .eq('participant_id', participantId)
+    .single();
+
+  if (checkError && checkError.code !== 'PGRST116') {
+    throw checkError;
+  }
+
+  if (existing) {
+    // Si existe, eliminarla
+    const { error: deleteError } = await supabase
+      .from('reactions')
+      .delete()
+      .eq('id', existing.id);
+
+    if (deleteError) throw deleteError;
+    return { action: 'removed' };
+  } else {
+    // Si no existe, crearla
+    const { data, error: insertError } = await supabase
+      .from('reactions')
+      .insert({ answer_id: answerId, participant_id: participantId })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+    return { action: 'added', data };
+  }
+}
+
+export async function getReactionsForAnswer(answerId: string) {
+  const { data, error } = await supabase
+    .from('reactions')
+    .select('*')
+    .eq('answer_id', answerId);
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getReactionsForSession(sessionId: string) {
+  // Obtener todas las reacciones de respuestas en esta sesión
+  const { data, error } = await supabase
+    .from('reactions')
+    .select(`
+      *,
+      answers!inner(session_id)
+    `)
+    .eq('answers.session_id', sessionId);
+
+  if (error) throw error;
+  return data || [];
+}
+
 // Generar código de sesión simple (6 caracteres alfanuméricos)
 function generateSessionCode(): string {
   const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

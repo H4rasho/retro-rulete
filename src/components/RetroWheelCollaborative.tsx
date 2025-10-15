@@ -165,13 +165,13 @@ export default function RetroWheelCollaborative({ session, participant }: Props)
   };
 
   const handleFinishSession = async () => {
-    if (!confirm('¿Estás seguro de que quieres finalizar la sesión? Todos los participantes perderán acceso.')) {
+    if (!confirm('¿Estás seguro de que quieres finalizar la sesión? Todos verán los resultados.')) {
       return;
     }
 
     try {
       await finishSession(session.id);
-      router.push(`/moderator/${session.code}`);
+      router.push(`/results/${session.code}`);
     } catch (error) {
       console.error('Error finishing session:', error);
       alert('Error al finalizar la sesión');
