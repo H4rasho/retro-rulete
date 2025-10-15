@@ -339,86 +339,95 @@ export default function ResultsPage() {
           </CardContent>
         </Card>
 
-        {/* Participants and their answers */}
+        {/* All Answers in Grid */}
         <div className="space-y-6">
           <h2 className="text-2xl font-bold text-gray-800">Respuestas del Equipo</h2>
           
-          {participants.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-gray-500">
-                No hay participantes en esta sesión
-              </CardContent>
-            </Card>
-          ) : (
-            participants.map((participant) => (
-              <Card key={participant.id} className="border-2 border-gray-200">
-                <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      {participant.name}
-                      {participant.is_moderator && (
-                        <Badge className="bg-purple-600">Moderador</Badge>
-                      )}
-                    </CardTitle>
-                    <Badge variant="outline" className="text-lg">
-                      {participant.answers.length} respuesta{participant.answers.length !== 1 ? 's' : ''}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {participant.answers.length === 0 ? (
-                    <p className="text-gray-500 italic">Este participante no envió respuestas</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {participant.answers.map((answer) => (
-                        <div
-                          key={answer.id}
-                          className="p-4 rounded-lg bg-white border-2 border-gray-200 hover:border-purple-300 transition-colors"
-                        >
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <p className="font-semibold text-purple-900 flex-1">
-                              {answer.question}
-                            </p>
-                            <Badge variant="outline" className="shrink-0 text-xs">
-                              {new Date(answer.created_at).toLocaleTimeString('es-ES', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </Badge>
-                          </div>
-                          <div className="bg-gray-50 p-3 rounded border border-gray-200 mb-3">
-                            <p className="text-gray-700">{answer.answer}</p>
-                          </div>
-                          
-                          {/* Reactions */}
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant={answer.has_reacted ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => handleToggleReaction(answer.id)}
-                              className={answer.has_reacted ? "bg-red-500 hover:bg-red-600" : ""}
-                            >
-                              <Heart 
-                                className={`h-4 w-4 mr-1 ${answer.has_reacted ? 'fill-current' : ''}`} 
-                              />
-                              {answer.reactions.length > 0 && (
-                                <span className="font-semibold">{answer.reactions.length}</span>
-                              )}
-                            </Button>
-                            {answer.reactions.length > 0 && (
-                              <span className="text-sm text-gray-500">
-                                {answer.reactions.length} {answer.reactions.length === 1 ? 'persona' : 'personas'} reaccionó
-                              </span>
-                            )}
-                          </div>
+          {(() => {
+            // Aplanar todas las respuestas de todos los participantes
+            const allAnswers = participants.flatMap(participant => 
+              participant.answers.map(answer => ({
+                ...answer,
+                participant_name: participant.name,
+                is_moderator: participant.is_moderator
+              }))
+            );
+
+            if (allAnswers.length === 0) {
+              return (
+                <Card>
+                  <CardContent className="p-8 text-center text-gray-500">
+                    No hay respuestas en esta sesión
+                  </CardContent>
+                </Card>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {allAnswers.map((answer) => (
+                  <Card
+                    key={answer.id}
+                    className="border-2 border-gray-200 hover:border-purple-400 hover:shadow-lg transition-all duration-300 flex flex-col"
+                  >
+                    <CardHeader className="pb-3 bg-gradient-to-br from-purple-50 to-blue-50">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">👤</span>
+                          <span className="font-semibold text-sm text-gray-800">
+                            {answer.participant_name}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
-          )}
+                        {answer.is_moderator && (
+                          <Badge className="bg-purple-600 text-xs h-5">Mod</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-purple-900 text-sm leading-tight flex-1">
+                          {answer.question}
+                        </p>
+                        <Badge variant="secondary" className="shrink-0 text-xs">
+                          {new Date(answer.created_at).toLocaleTimeString('es-ES', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="p-4 flex-1 flex flex-col">
+                      <div className="bg-white p-3 rounded-lg border border-gray-200 mb-3 flex-1">
+                        <p className="text-gray-700 text-sm">{answer.answer}</p>
+                      </div>
+                      
+                      {/* Reactions */}
+                      <div className="flex items-center pt-2 border-t border-gray-100">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleReaction(answer.id)}
+                          className={`gap-1.5 hover:bg-red-50 ${
+                            answer.has_reacted 
+                              ? 'text-red-500 hover:text-red-600' 
+                              : 'text-gray-500 hover:text-red-500'
+                          }`}
+                        >
+                          <Heart 
+                            className={`h-4 w-4 transition-all ${
+                              answer.has_reacted ? 'fill-current scale-110' : ''
+                            }`} 
+                          />
+                          <span className="text-sm font-medium">
+                            {answer.reactions.length > 0 ? answer.reactions.length : 'Me gusta'}
+                          </span>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Voting Section */}
