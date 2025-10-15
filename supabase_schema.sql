@@ -40,6 +40,16 @@ CREATE TABLE reactions (
   UNIQUE(answer_id, participant_id) -- Un participante solo puede dar un corazón por respuesta
 );
 
+-- Tabla de Votos para Destacado del Sprint
+CREATE TABLE votes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
+  voter_id UUID REFERENCES participants(id) ON DELETE CASCADE,
+  voted_for_id UUID REFERENCES participants(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(session_id, voter_id) -- Un participante solo puede votar una vez por sesión
+);
+
 -- Índices para mejorar el rendimiento
 CREATE INDEX idx_sessions_code ON sessions(code);
 CREATE INDEX idx_participants_session ON participants(session_id);
@@ -47,12 +57,16 @@ CREATE INDEX idx_answers_session ON answers(session_id);
 CREATE INDEX idx_answers_participant ON answers(participant_id);
 CREATE INDEX idx_reactions_answer ON reactions(answer_id);
 CREATE INDEX idx_reactions_participant ON reactions(participant_id);
+CREATE INDEX idx_votes_session ON votes(session_id);
+CREATE INDEX idx_votes_voter ON votes(voter_id);
+CREATE INDEX idx_votes_voted_for ON votes(voted_for_id);
 
 -- Habilitar Row Level Security (RLS)
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS - Permitir lectura pública (para simplificar, puedes ajustar según necesites)
 CREATE POLICY "Permitir lectura de sesiones" ON sessions FOR SELECT USING (true);
@@ -70,6 +84,11 @@ CREATE POLICY "Permitir eliminación de respuestas" ON answers FOR DELETE USING 
 CREATE POLICY "Permitir lectura de reacciones" ON reactions FOR SELECT USING (true);
 CREATE POLICY "Permitir creación de reacciones" ON reactions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir eliminación de reacciones" ON reactions FOR DELETE USING (true);
+
+CREATE POLICY "Permitir lectura de votos" ON votes FOR SELECT USING (true);
+CREATE POLICY "Permitir creación de votos" ON votes FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir actualización de votos" ON votes FOR UPDATE USING (true);
+CREATE POLICY "Permitir eliminación de votos" ON votes FOR DELETE USING (true);
 
 -- Función para generar código de sesión único
 CREATE OR REPLACE FUNCTION generate_session_code()
@@ -113,6 +132,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE sessions;
 ALTER PUBLICATION supabase_realtime ADD TABLE participants;
 ALTER PUBLICATION supabase_realtime ADD TABLE answers;
 ALTER PUBLICATION supabase_realtime ADD TABLE reactions;
+ALTER PUBLICATION supabase_realtime ADD TABLE votes;
 
 -- Nota: Si el comando anterior falla, intenta con:
 -- ALTER publication supabase_realtime SET (publish = 'insert, update, delete');

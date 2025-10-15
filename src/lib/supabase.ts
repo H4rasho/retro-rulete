@@ -211,6 +211,66 @@ export async function getReactionsForSession(sessionId: string) {
   return data || [];
 }
 
+// Funciones de Votación para Destacado del Sprint
+export async function voteForParticipant(sessionId: string, voterId: string, votedForId: string) {
+  // Verificar si ya existe un voto de este participante
+  const { data: existing, error: checkError } = await supabase
+    .from('votes')
+    .select('id, voted_for_id')
+    .eq('session_id', sessionId)
+    .eq('voter_id', voterId)
+    .single();
+
+  if (checkError && checkError.code !== 'PGRST116') {
+    throw checkError;
+  }
+
+  if (existing) {
+    // Si ya votó, actualizar el voto
+    const { data, error: updateError } = await supabase
+      .from('votes')
+      .update({ voted_for_id: votedForId })
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+    return { action: 'updated', data };
+  } else {
+    // Si no ha votado, crear nuevo voto
+    const { data, error: insertError } = await supabase
+      .from('votes')
+      .insert({ session_id: sessionId, voter_id: voterId, voted_for_id: votedForId })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+    return { action: 'created', data };
+  }
+}
+
+export async function getVotesForSession(sessionId: string) {
+  const { data, error } = await supabase
+    .from('votes')
+    .select('*')
+    .eq('session_id', sessionId);
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getMyVote(sessionId: string, voterId: string) {
+  const { data, error } = await supabase
+    .from('votes')
+    .select('*')
+    .eq('session_id', sessionId)
+    .eq('voter_id', voterId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || null;
+}
+
 // Generar código de sesión simple (6 caracteres alfanuméricos)
 function generateSessionCode(): string {
   const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

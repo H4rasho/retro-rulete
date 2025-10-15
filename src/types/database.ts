@@ -34,6 +34,14 @@ export interface Reaction {
   created_at: string;
 }
 
+export interface Vote {
+  id: string;
+  session_id: string;
+  voter_id: string;
+  voted_for_id: string;
+  created_at: string;
+}
+
 export interface AnswerWithReactions extends Answer {
   reactions: Reaction[];
   reaction_count: number;

@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase, toggleReaction } from "@/lib/supabase";
-import { Users, MessageSquare, Home, Heart } from "lucide-react";
-import type { Session, Participant, Answer, Reaction } from "@/types/database";
+import { supabase, toggleReaction, voteForParticipant, getVotesForSession, getMyVote } from "@/lib/supabase";
+import { Users, MessageSquare, Home, Heart, Trophy, Star } from "lucide-react";
+import type { Session, Participant, Answer, Reaction, Vote } from "@/types/database";
 
 interface AnswerWithReactions extends Answer {
   participant_name: string;
@@ -27,6 +27,8 @@ export default function ResultsPage() {
   const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [votes, setVotes] = useState<Vote[]>([]);
+  const [myVote, setMyVote] = useState<Vote | null>(null);
 
   useEffect(() => {
     const participantId = localStorage.getItem('participantId');
@@ -98,6 +100,16 @@ export default function ResultsPage() {
           };
         });
 
+        // Cargar votos
+        const votesData = await getVotesForSession(sessionData.id);
+        setVotes(votesData);
+
+        // Cargar mi voto si existe
+        if (currentParticipantId) {
+          const myVoteData = await getMyVote(sessionData.id, currentParticipantId);
+          setMyVote(myVoteData);
+        }
+
         setSession(sessionData);
         setParticipants(participantsWithAnswers);
         setLoading(false);
@@ -164,6 +176,56 @@ export default function ResultsPage() {
       alert('Error al reaccionar');
     }
   };
+
+  const handleVote = async (participantId: string) => {
+    if (!currentParticipantId || !session) return;
+
+    // No permitir votar por uno mismo
+    if (participantId === currentParticipantId) {
+      alert('No puedes votar por ti mismo');
+      return;
+    }
+
+    try {
+      await voteForParticipant(session.id, currentParticipantId, participantId);
+      // Las actualizaciones llegarán vía Realtime
+    } catch (error) {
+      console.error('Error voting:', error);
+      alert('Error al votar');
+    }
+  };
+
+  // Suscribirse a cambios en votos en tiempo real
+  useEffect(() => {
+    if (!session) return;
+
+    const channel = supabase
+      .channel(`session-${session.id}-votes`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'votes',
+        },
+        async () => {
+          // Recargar votos
+          const votesData = await getVotesForSession(session.id);
+          setVotes(votesData);
+
+          // Actualizar mi voto
+          if (currentParticipantId) {
+            const myVoteData = await getMyVote(session.id, currentParticipantId);
+            setMyVote(myVoteData);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.id, currentParticipantId]);
 
   if (loading) {
     return (
@@ -357,6 +419,114 @@ export default function ResultsPage() {
               </Card>
             ))
           )}
+        </div>
+
+        {/* Voting Section */}
+        <div className="space-y-6 mt-12">
+          <Card className="border-2 border-yellow-300 bg-gradient-to-r from-yellow-50 to-orange-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Trophy className="h-6 w-6 text-yellow-600" />
+                Destacado del Sprint
+              </CardTitle>
+              <p className="text-gray-700 mt-2">
+                Vota por el participante que consideres destacado en este sprint. Solo puedes votar por una persona.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {participants.map((participant) => {
+                  const voteCount = votes.filter(v => v.voted_for_id === participant.id).length;
+                  const hasVoted = myVote?.voted_for_id === participant.id;
+                  const isCurrentUser = participant.id === currentParticipantId;
+
+                  return (
+                    <Card 
+                      key={participant.id}
+                      className={`transition-all ${
+                        hasVoted 
+                          ? 'border-2 border-yellow-500 bg-yellow-50' 
+                          : isCurrentUser
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:border-yellow-300 hover:shadow-lg cursor-pointer'
+                      }`}
+                      onClick={() => !isCurrentUser && handleVote(participant.id)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="text-2xl">
+                              {hasVoted ? '⭐' : '👤'}
+                            </div>
+                            <div>
+                              <p className="font-semibold">{participant.name}</p>
+                              {isCurrentUser && (
+                                <p className="text-xs text-gray-500">(Tú)</p>
+                              )}
+                            </div>
+                          </div>
+                          {participant.is_moderator && (
+                            <Badge className="bg-purple-600 text-xs">Mod</Badge>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mt-3">
+                          <Star className={`h-4 w-4 ${voteCount > 0 ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`} />
+                          <span className="text-sm font-semibold">
+                            {voteCount} {voteCount === 1 ? 'voto' : 'votos'}
+                          </span>
+                        </div>
+
+                        {hasVoted && (
+                          <div className="mt-2 text-xs text-yellow-700 font-medium">
+                            ✓ Tu voto
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {myVote && (
+                <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg text-center">
+                  <p className="text-sm text-yellow-800">
+                    Ya votaste. Haz clic en otro participante para cambiar tu voto.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Winner Display */}
+          {votes.length > 0 && (() => {
+            const voteCounts = participants.map(p => ({
+              participant: p,
+              votes: votes.filter(v => v.voted_for_id === p.id).length
+            }));
+            const maxVotes = Math.max(...voteCounts.map(vc => vc.votes));
+            const winners = voteCounts.filter(vc => vc.votes === maxVotes && vc.votes > 0);
+
+            if (winners.length > 0) {
+              return (
+                <Card className="border-2 border-yellow-400 bg-gradient-to-r from-yellow-100 to-amber-100">
+                  <CardContent className="p-6 text-center">
+                    <Trophy className="h-12 w-12 text-yellow-600 mx-auto mb-3" />
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                      {winners.length === 1 ? '🏆 Destacado del Sprint' : '🏆 Empate'}
+                    </h3>
+                    <div className="flex items-center justify-center gap-4 flex-wrap">
+                      {winners.map(w => (
+                        <div key={w.participant.id} className="text-xl font-semibold text-yellow-700">
+                          {w.participant.name} ({w.votes} {w.votes === 1 ? 'voto' : 'votos'})
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }
+          })()}
         </div>
       </div>
     </div>
