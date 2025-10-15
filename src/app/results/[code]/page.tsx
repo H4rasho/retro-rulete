@@ -168,12 +168,63 @@ export default function ResultsPage() {
   const handleToggleReaction = async (answerId: string) => {
     if (!currentParticipantId) return;
 
+    // Optimistic UI: Actualizar inmediatamente antes de la petición
+    setParticipants(prev => prev.map(participant => ({
+      ...participant,
+      answers: participant.answers.map(answer => {
+        if (answer.id === answerId) {
+          const hasReacted = answer.has_reacted;
+          const newReactions = hasReacted
+            ? answer.reactions.filter(r => r.participant_id !== currentParticipantId)
+            : [...answer.reactions, {
+                id: 'temp-' + Date.now(),
+                answer_id: answerId,
+                participant_id: currentParticipantId,
+                created_at: new Date().toISOString()
+              }];
+
+          return {
+            ...answer,
+            reactions: newReactions,
+            has_reacted: !hasReacted
+          };
+        }
+        return answer;
+      })
+    })));
+
     try {
       await toggleReaction(answerId, currentParticipantId);
-      // Las actualizaciones llegarán vía Realtime
+      // La sincronización en tiempo real confirmará o corregirá el estado
     } catch (error) {
       console.error('Error toggling reaction:', error);
-      alert('Error al reaccionar');
+      
+      // Revertir el cambio optimista en caso de error
+      setParticipants(prev => prev.map(participant => ({
+        ...participant,
+        answers: participant.answers.map(answer => {
+          if (answer.id === answerId) {
+            const hasReacted = answer.has_reacted;
+            const newReactions = !hasReacted
+              ? answer.reactions.filter(r => r.participant_id !== currentParticipantId)
+              : [...answer.reactions, {
+                  id: 'temp-' + Date.now(),
+                  answer_id: answerId,
+                  participant_id: currentParticipantId,
+                  created_at: new Date().toISOString()
+                }];
+
+            return {
+              ...answer,
+              reactions: newReactions,
+              has_reacted: !hasReacted
+            };
+          }
+          return answer;
+        })
+      })));
+      
+      alert('Error al reaccionar. Intenta de nuevo.');
     }
   };
 
@@ -186,12 +237,43 @@ export default function ResultsPage() {
       return;
     }
 
+    // Guardar estado anterior para rollback
+    const previousVotes = [...votes];
+    const previousMyVote = myVote ? { ...myVote } : null;
+
+    // Optimistic UI: Actualizar inmediatamente
+    if (myVote) {
+      // Actualizar voto existente
+      setVotes(prev => prev.map(v => 
+        v.voter_id === currentParticipantId 
+          ? { ...v, voted_for_id: participantId }
+          : v
+      ));
+      setMyVote({ ...myVote, voted_for_id: participantId });
+    } else {
+      // Crear nuevo voto
+      const newVote = {
+        id: 'temp-' + Date.now(),
+        session_id: session.id,
+        voter_id: currentParticipantId,
+        voted_for_id: participantId,
+        created_at: new Date().toISOString()
+      };
+      setVotes(prev => [...prev, newVote]);
+      setMyVote(newVote);
+    }
+
     try {
       await voteForParticipant(session.id, currentParticipantId, participantId);
-      // Las actualizaciones llegarán vía Realtime
+      // La sincronización en tiempo real confirmará el estado
     } catch (error) {
       console.error('Error voting:', error);
-      alert('Error al votar');
+      
+      // Revertir cambios en caso de error
+      setVotes(previousVotes);
+      setMyVote(previousMyVote);
+      
+      alert('Error al votar. Intenta de nuevo.');
     }
   };
 
