@@ -346,70 +346,82 @@ export default function ResultsPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50 py-8">
       <div className="w-full max-w-7xl mx-auto p-4 space-y-6">
         {/* Header */}
-        <Card className="border-2 border-purple-300 bg-white/80 backdrop-blur">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <Card className="border-2 border-purple-300 bg-white/80 backdrop-blur shadow-lg">
+          <CardContent className="p-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              {/* Title */}
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                  Resultados: {session.name}
+                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  📊 Resultados: {session.name}
                 </h1>
-                <p className="text-gray-600 mt-1">
-                  Sesión finalizada · Código: <span className="font-bold">{session.code}</span>
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge className="bg-green-600 text-white text-xs">Sesión Finalizada</Badge>
+                  <span className="text-xs text-gray-500">•</span>
+                  <span className="text-xs text-gray-600">Código: <span className="font-bold text-purple-600">{session.code}</span></span>
+                </div>
               </div>
-              
-              <div className="flex items-center gap-3">
+
+              {/* Stats Inline */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2 bg-purple-50 px-3 py-2 rounded-lg border border-purple-200">
+                  <Users className="h-5 w-5 text-purple-600" />
+                  <div className="flex flex-col">
+                    <span className="text-xs text-purple-600">Participantes</span>
+                    <span className="text-xl font-bold text-purple-700">{participants.length}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+                  <MessageSquare className="h-5 w-5 text-blue-600" />
+                  <div className="flex flex-col">
+                    <span className="text-xs text-blue-600">Respuestas</span>
+                    <span className="text-xl font-bold text-blue-700">{totalAnswers}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-red-50 px-3 py-2 rounded-lg border border-red-200">
+                  <Heart className="h-5 w-5 text-red-600" />
+                  <div className="flex flex-col">
+                    <span className="text-xs text-red-600">Reacciones</span>
+                    <span className="text-xl font-bold text-red-700">{totalReactions}</span>
+                  </div>
+                </div>
+
                 <Button
                   onClick={() => router.push('/')}
                   variant="outline"
-                  className="bg-white"
+                  size="sm"
+                  className="text-sm"
                 >
-                  <Home className="mr-2 h-4 w-4" />
+                  <Home className="mr-1.5 h-4 w-4" />
                   Inicio
                 </Button>
               </div>
             </div>
+
+            {/* Participants List */}
+            {participants.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-gray-500 font-medium">Participantes:</span>
+                  {participants.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700"
+                    >
+                      <div className="w-2 h-2 rounded-full bg-gray-400" />
+                      <span className="font-medium">{p.name}</span>
+                      {p.is_moderator && (
+                        <Badge className="bg-purple-600 text-white text-[10px] px-1 py-0 h-4">M</Badge>
+                      )}
+                      <span className="text-gray-500">({p.answers.length})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Users className="h-5 w-5 text-purple-600" />
-                Participantes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-purple-600">{participants.length}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-blue-600" />
-                Respuestas Totales
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-blue-600">{totalAnswers}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Heart className="h-5 w-5 text-red-500" />
-                Reacciones
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-red-500">{totalReactions}</p>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Info Banner */}
         <Card className="bg-gradient-to-r from-purple-100 to-blue-100 border-purple-300">

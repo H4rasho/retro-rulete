@@ -32,7 +32,6 @@ import {
   supabase,
   saveAnswer,
   finishSession,
-  getParticipantCount,
   startTimer,
   stopTimer,
   addTimeToTimer,
@@ -105,6 +104,7 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
   const [myAnswers, setMyAnswers] = useState<Answer[]>([])
   const [currentAnswer, setCurrentAnswer] = useState('')
   const [participantCount, setParticipantCount] = useState(1)
+  const [participants, setParticipants] = useState<Participant[]>([])
   const [copied, setCopied] = useState(false)
   const wheelRef = useRef<HTMLDivElement>(null)
   
@@ -159,14 +159,22 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
     }
   }, [participant.id])
 
-  // Contar participantes
+  // Cargar participantes
   useEffect(() => {
-    const loadCount = async () => {
-      const count = await getParticipantCount(session.id)
-      setParticipantCount(count)
+    const loadParticipants = async () => {
+      const { data, error } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('session_id', session.id)
+        .order('joined_at', { ascending: true })
+
+      if (!error && data) {
+        setParticipants(data)
+        setParticipantCount(data.length)
+      }
     }
 
-    loadCount()
+    loadParticipants()
 
     // Suscribirse a cambios en participantes
     const channel = supabase
@@ -179,9 +187,7 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
           table: 'participants',
           filter: `session_id=eq.${session.id}`,
         },
-        () => {
-          loadCount()
-        }
+        loadParticipants
       )
       .subscribe()
 
@@ -365,95 +371,129 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50 py-8">
       <div className="w-full max-w-6xl mx-auto p-4 space-y-6">
         {/* Header with Session Info */}
-        <Card className="border-2 border-purple-300 bg-white/80 backdrop-blur">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                  {session.name}
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Participante:{' '}
-                  <span className="font-semibold">{participant.name}</span>
-                  {participant.is_moderator && (
-                    <Badge className="ml-2 bg-purple-600">Moderador</Badge>
-                  )}
-                </p>
+        <Card className="border-2 border-purple-300 bg-white/80 backdrop-blur shadow-lg">
+          <CardContent className="p-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              {/* Left: Title and User */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                  {participant.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    {session.name}
+                  </h1>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>{participant.name}</span>
+                    {participant.is_moderator && (
+                      <Badge className="bg-purple-600 text-white text-xs px-2 py-0">Mod</Badge>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg">
-                  <Users className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium">
-                    {participantCount} participantes
-                  </span>
+              {/* Center: Stats */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Participants */}
+                <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <span className="text-base font-semibold text-blue-700">{participantCount}</span>
                 </div>
 
-                {/* Timer Display */}
+                {/* Code */}
+                <div className="flex items-center gap-2 bg-purple-50 px-3 py-2 rounded-lg border border-purple-200">
+                  <span className="text-sm text-purple-600">Código:</span>
+                  <span className="text-base font-bold text-purple-700">{session.code}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copySessionCode}
+                    className="h-7 w-7 p-0 hover:bg-purple-100"
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-purple-600" />
+                    )}
+                  </Button>
+                </div>
+
+                {/* Timer */}
                 {timeRemaining > 0 && (
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-lg ${
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border font-semibold text-base ${
                     timeRemaining <= 60 && session.timer_is_active
-                      ? 'bg-red-100 text-red-700 animate-pulse'
+                      ? 'bg-red-50 border-red-300 text-red-700 animate-pulse'
                       : session.timer_is_active
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-yellow-100 text-yellow-700'
+                      ? 'bg-green-50 border-green-300 text-green-700'
+                      : 'bg-yellow-50 border-yellow-300 text-yellow-700'
                   }`}>
                     <Timer className="h-5 w-5" />
                     {formatTime(timeRemaining)}
                   </div>
                 )}
+              </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="bg-purple-100 px-4 py-2 rounded-lg">
-                    <span className="text-xs text-gray-600">Código:</span>
-                    <span className="ml-2 text-lg font-bold text-purple-700">
-                      {session.code}
-                    </span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={copySessionCode}
-                    className="h-10"
-                  >
-                    {copied ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-
+              {/* Right: Actions */}
+              <div className="flex flex-wrap gap-2">
                 {participant.is_moderator && (
                   <>
                     <Button
                       onClick={() => setShowTimerConfig(!showTimerConfig)}
                       variant="outline"
                       size="sm"
+                      className="text-sm"
                     >
-                      <Timer className="h-4 w-4 mr-2" />
+                      <Timer className="h-4 w-4 mr-1.5" />
                       Timer
                     </Button>
                     <Button
                       onClick={handleFinishSession}
                       variant="destructive"
                       size="sm"
+                      className="text-sm"
                     >
-                      Finalizar Sesión
+                      Finalizar
                     </Button>
                   </>
                 )}
-
                 <Button
                   onClick={handleLeaveSession}
                   variant="outline"
                   size="sm"
+                  className="text-sm"
                 >
-                  <LogOut className="h-4 w-4 mr-2" />
+                  <LogOut className="h-4 w-4 mr-1.5" />
                   Salir
                 </Button>
               </div>
             </div>
+
+            {/* Participants List */}
+            {participants.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-gray-500 font-medium">En línea:</span>
+                  {participants.map((p) => (
+                    <div
+                      key={p.id}
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs ${
+                        p.id === participant.id
+                          ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      <div className={`w-2 h-2 rounded-full ${
+                        p.id === participant.id ? 'bg-purple-500' : 'bg-gray-400'
+                      }`} />
+                      <span className="font-medium">{p.name}</span>
+                      {p.is_moderator && (
+                        <Badge className="bg-purple-600 text-white text-[10px] px-1 py-0 h-4">M</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
