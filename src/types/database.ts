@@ -38,11 +38,24 @@ export interface Reaction {
 }
 
 export interface Vote {
-  id: string;
-  session_id: string;
-  voter_id: string;
-  voted_for_id: string;
-  created_at: string;
+  id: string
+  session_id: string
+  voter_id: string
+  voted_for_id: string
+  created_at: string
+}
+
+export interface CollectedHeart {
+  id: string
+  session_id: string
+  participant_id: string
+  hearts_count: number
+  created_at: string
+  updated_at: string
+  participants?: {
+    name: string
+    is_moderator: boolean
+  }
 }
 
 export interface AnswerWithReactions extends Answer {

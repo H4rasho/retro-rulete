@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { CollectedHeart } from '@/types/database';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -388,7 +389,7 @@ export async function addCollectedHeart(sessionId: string, participantId: string
   }
 }
 
-export async function getCollectedHearts(sessionId: string) {
+export async function getCollectedHearts(sessionId: string): Promise<CollectedHeart[]> {
   const { data, error } = await supabase
     .from('collected_hearts')
     .select(`
@@ -402,7 +403,7 @@ export async function getCollectedHearts(sessionId: string) {
     .order('hearts_count', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+  return (data as CollectedHeart[]) || [];
 }
 
 // Generar código de sesión simple (6 caracteres alfanuméricos)

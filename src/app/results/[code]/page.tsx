@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase, toggleReaction, voteForParticipant, getVotesForSession, getMyVote, getCollectedHearts } from "@/lib/supabase";
 import { Users, MessageSquare, Home, Heart, Trophy, Star } from "lucide-react";
-import type { Session, Participant, Answer, Reaction, Vote } from "@/types/database";
+import type { Session, Participant, Answer, Reaction, Vote, CollectedHeart } from "@/types/database";
 
 interface AnswerWithReactions extends Answer {
   participant_name: string;
@@ -29,7 +29,7 @@ export default function ResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [myVote, setMyVote] = useState<Vote | null>(null);
-  const [collectedHearts, setCollectedHearts] = useState<any[]>([]);
+  const [collectedHearts, setCollectedHearts] = useState<CollectedHeart[]>([]);
 
   useEffect(() => {
     const participantId = localStorage.getItem('participantId');
@@ -543,7 +543,7 @@ export default function ResultsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {collectedHearts.map((heart: any, index: number) => (
+                  {collectedHearts.map((heart, index) => (
                     <div
                       key={heart.id}
                       className={`flex items-center justify-between p-4 rounded-lg border-2 ${
