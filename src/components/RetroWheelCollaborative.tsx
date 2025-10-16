@@ -36,6 +36,7 @@ import {
   stopTimer,
   addTimeToTimer,
   resetTimer,
+  addCollectedHeart,
 } from '@/lib/supabase'
 import type {Session, Participant, Answer} from '@/types/database'
 import { toast } from 'sonner'
@@ -48,12 +49,14 @@ const RETRO_QUESTIONS = [
   '💡 ¿Qué aprendimos?',
   '⏰ ¿Qué nos hizo perder tiempo?',
   '🚀 ¿Qué debemos empezar a hacer?',
+  '❤️ ¡Corazón de la Suerte!', // Premio especial 1
   '🛑 ¿Qué debemos dejar de hacer?',
   '🎯 ¿Se cumplieron los objetivos del sprint?',
   '⭐ ¿Qué nos sorprendió positivamente?',
   '😮 ¿Qué nos sorprendió negativamente?',
   '🛠️ ¿Qué herramientas nos ayudaron?',
   '⚠️ ¿Qué herramientas nos limitaron?',
+  '❤️ ¡Corazón de la Suerte!', // Premio especial 2
   '🎉 ¿Qué celebramos como equipo?',
 
   // Preguntas Divertidas y Personales
@@ -61,6 +64,7 @@ const RETRO_QUESTIONS = [
   '🗣️ Cuenta un chisme (sin nombres si es comprometedor)',
   '💭 Responde lo que quieras',
   '😤 ¿Qué o quién te hizo enojar esta semana?',
+  '❤️ ¡Corazón de la Suerte!', // Premio especial 3
   '🎵 ¿Qué canción no puedes dejar de escuchar?',
   '🏝️ Si pudieras viajar a cualquier lugar, ¿a dónde irías?',
   '🎯 ¿Cuál es tu superpoder secreto?',
@@ -211,7 +215,7 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
 
     setRotation(totalRotation)
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const normalizedRotation = totalRotation % 360
       const segmentAngle = 360 / RETRO_QUESTIONS.length
       const selectedIndex =
@@ -220,8 +224,25 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
         ) % RETRO_QUESTIONS.length
       const question = RETRO_QUESTIONS[selectedIndex]
 
-      setSelectedQuestion(question)
-      setIsSpinning(false)
+      // Verificar si es un corazón de la suerte
+      if (question.includes('❤️') || question.includes('Corazón')) {
+        try {
+          await addCollectedHeart(session.id, participant.id)
+          toast.success('❤️ ¡Ganaste un Corazón de la Suerte!', {
+            description: 'Se sumó a tu colección. ¡Sigue girando!',
+            duration: 5000,
+          })
+          setIsSpinning(false)
+          setSelectedQuestion(null)
+        } catch (error) {
+          console.error('Error adding heart:', error)
+          toast.error('Error al agregar el corazón')
+          setIsSpinning(false)
+        }
+      } else {
+        setSelectedQuestion(question)
+        setIsSpinning(false)
+      }
     }, 4000)
   }
 

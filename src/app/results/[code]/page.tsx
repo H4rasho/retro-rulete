@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase, toggleReaction, voteForParticipant, getVotesForSession, getMyVote } from "@/lib/supabase";
+import { supabase, toggleReaction, voteForParticipant, getVotesForSession, getMyVote, getCollectedHearts } from "@/lib/supabase";
 import { Users, MessageSquare, Home, Heart, Trophy, Star } from "lucide-react";
 import type { Session, Participant, Answer, Reaction, Vote } from "@/types/database";
 
@@ -29,6 +29,7 @@ export default function ResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [myVote, setMyVote] = useState<Vote | null>(null);
+  const [collectedHearts, setCollectedHearts] = useState<any[]>([]);
 
   useEffect(() => {
     const participantId = localStorage.getItem('participantId');
@@ -109,6 +110,10 @@ export default function ResultsPage() {
           const myVoteData = await getMyVote(sessionData.id, currentParticipantId);
           setMyVote(myVoteData);
         }
+
+        // Cargar corazones coleccionados
+        const heartsData = await getCollectedHearts(sessionData.id);
+        setCollectedHearts(heartsData);
 
         setSession(sessionData);
         setParticipants(participantsWithAnswers);
@@ -523,6 +528,65 @@ export default function ResultsPage() {
             );
           })()}
         </div>
+
+        {/* Hearts Leaderboard */}
+        {collectedHearts.length > 0 && (
+          <div className="space-y-6 mt-12">
+            <Card className="border-2 border-pink-300 bg-gradient-to-r from-pink-50 to-red-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-2xl">
+                  ❤️ Leaderboard de Corazones
+                </CardTitle>
+                <p className="text-gray-700 mt-2">
+                  Participantes que tuvieron la suerte de conseguir corazones durante la sesión
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {collectedHearts.map((heart: any, index: number) => (
+                    <div
+                      key={heart.id}
+                      className={`flex items-center justify-between p-4 rounded-lg border-2 ${
+                        index === 0
+                          ? 'bg-gradient-to-r from-yellow-100 to-amber-100 border-yellow-400'
+                          : index === 1
+                          ? 'bg-gradient-to-r from-gray-100 to-slate-100 border-gray-400'
+                          : index === 2
+                          ? 'bg-gradient-to-r from-orange-100 to-amber-100 border-orange-400'
+                          : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="text-3xl font-bold">
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-lg">{heart.participants?.name}</p>
+                            {heart.participants?.is_moderator && (
+                              <Badge className="bg-purple-600 text-white text-xs">Mod</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {heart.hearts_count} {heart.hearts_count === 1 ? 'corazón' : 'corazones'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        {Array.from({ length: Math.min(heart.hearts_count, 10) }).map((_, i) => (
+                          <span key={i} className="text-2xl">❤️</span>
+                        ))}
+                        {heart.hearts_count > 10 && (
+                          <span className="text-lg font-bold text-red-600">+{heart.hearts_count - 10}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Voting Section */}
         <div className="space-y-6 mt-12">

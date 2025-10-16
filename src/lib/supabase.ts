@@ -343,6 +343,68 @@ export async function resetTimer(sessionId: string) {
   return data;
 }
 
+// Funciones de Corazones Coleccionados
+export async function addCollectedHeart(sessionId: string, participantId: string) {
+  // Intentar obtener el registro existente
+  const { data: existing, error: fetchError } = await supabase
+    .from('collected_hearts')
+    .select('*')
+    .eq('session_id', sessionId)
+    .eq('participant_id', participantId)
+    .single();
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    throw fetchError;
+  }
+
+  if (existing) {
+    // Incrementar el contador
+    const { data, error } = await supabase
+      .from('collected_hearts')
+      .update({
+        hearts_count: existing.hearts_count + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } else {
+    // Crear nuevo registro
+    const { data, error } = await supabase
+      .from('collected_hearts')
+      .insert({
+        session_id: sessionId,
+        participant_id: participantId,
+        hearts_count: 1
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+}
+
+export async function getCollectedHearts(sessionId: string) {
+  const { data, error } = await supabase
+    .from('collected_hearts')
+    .select(`
+      *,
+      participants (
+        name,
+        is_moderator
+      )
+    `)
+    .eq('session_id', sessionId)
+    .order('hearts_count', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
 // Generar código de sesión simple (6 caracteres alfanuméricos)
 function generateSessionCode(): string {
   const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

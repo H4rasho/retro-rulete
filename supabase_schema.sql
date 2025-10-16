@@ -53,6 +53,17 @@ CREATE TABLE votes (
   UNIQUE(session_id, voter_id) -- Un participante solo puede votar una vez por sesión
 );
 
+-- Tabla de Corazones Coleccionados
+CREATE TABLE collected_hearts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
+  participant_id UUID REFERENCES participants(id) ON DELETE CASCADE,
+  hearts_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(session_id, participant_id) -- Un registro por participante por sesión
+);
+
 -- Índices para mejorar el rendimiento
 CREATE INDEX idx_sessions_code ON sessions(code);
 CREATE INDEX idx_participants_session ON participants(session_id);
@@ -63,6 +74,8 @@ CREATE INDEX idx_reactions_participant ON reactions(participant_id);
 CREATE INDEX idx_votes_session ON votes(session_id);
 CREATE INDEX idx_votes_voter ON votes(voter_id);
 CREATE INDEX idx_votes_voted_for ON votes(voted_for_id);
+CREATE INDEX idx_collected_hearts_session ON collected_hearts(session_id);
+CREATE INDEX idx_collected_hearts_participant ON collected_hearts(participant_id);
 
 -- Habilitar Row Level Security (RLS)
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
@@ -70,6 +83,7 @@ ALTER TABLE participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE collected_hearts ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS - Permitir lectura pública (para simplificar, puedes ajustar según necesites)
 CREATE POLICY "Permitir lectura de sesiones" ON sessions FOR SELECT USING (true);
@@ -92,6 +106,10 @@ CREATE POLICY "Permitir lectura de votos" ON votes FOR SELECT USING (true);
 CREATE POLICY "Permitir creación de votos" ON votes FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir actualización de votos" ON votes FOR UPDATE USING (true);
 CREATE POLICY "Permitir eliminación de votos" ON votes FOR DELETE USING (true);
+
+CREATE POLICY "Permitir lectura de corazones" ON collected_hearts FOR SELECT USING (true);
+CREATE POLICY "Permitir creación de corazones" ON collected_hearts FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir actualización de corazones" ON collected_hearts FOR UPDATE USING (true);
 
 -- Función para generar código de sesión único
 CREATE OR REPLACE FUNCTION generate_session_code()
@@ -136,6 +154,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE participants;
 ALTER PUBLICATION supabase_realtime ADD TABLE answers;
 ALTER PUBLICATION supabase_realtime ADD TABLE reactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE votes;
+ALTER PUBLICATION supabase_realtime ADD TABLE collected_hearts;
 
 -- Nota: Si el comando anterior falla, intenta con:
 -- ALTER publication supabase_realtime SET (publish = 'insert, update, delete');
