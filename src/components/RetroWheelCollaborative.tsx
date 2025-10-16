@@ -22,14 +22,24 @@ import {
   Copy,
   Check,
   LogOut,
+  Timer,
+  Play,
+  Pause,
+  RotateCcw,
+  Plus,
 } from 'lucide-react'
 import {
   supabase,
   saveAnswer,
   finishSession,
   getParticipantCount,
+  startTimer,
+  stopTimer,
+  addTimeToTimer,
+  resetTimer,
 } from '@/lib/supabase'
 import type {Session, Participant, Answer} from '@/types/database'
+import { toast } from 'sonner'
 
 const RETRO_QUESTIONS = [
   // Preguntas de Retrospectiva Profesional
@@ -97,6 +107,12 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
   const [participantCount, setParticipantCount] = useState(1)
   const [copied, setCopied] = useState(false)
   const wheelRef = useRef<HTMLDivElement>(null)
+  
+  // Timer states
+  const [timeRemaining, setTimeRemaining] = useState(0)
+  const [timerInputMinutes, setTimerInputMinutes] = useState(5)
+  const [showTimerConfig, setShowTimerConfig] = useState(false)
+  const timerSoundRef = useRef<HTMLAudioElement | null>(null)
   
   // Preguntas desordenadas para la vista (solo se calcula una vez)
   const [shuffledQuestions] = useState(() => {
@@ -226,9 +242,8 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
       !confirm(
         '¿Estás seguro de que quieres finalizar la sesión? Todos verán los resultados.'
       )
-    ) {
+    )
       return
-    }
 
     try {
       await finishSession(session.id)
@@ -237,6 +252,97 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
       console.error('Error finishing session:', error)
       alert('Error al finalizar la sesión')
     }
+  }
+
+  const handleStartTimer = async () => {
+    try {
+      const durationInSeconds = timerInputMinutes * 60
+      await startTimer(session.id, durationInSeconds)
+      setShowTimerConfig(false)
+      toast.success(`Timer iniciado: ${timerInputMinutes} minutos`)
+    } catch (error) {
+      console.error('Error starting timer:', error)
+      toast.error('Error al iniciar el timer')
+    }
+  }
+
+  const handleStopTimer = async () => {
+    try {
+      await stopTimer(session.id)
+      toast.info('Timer pausado')
+    } catch (error) {
+      console.error('Error stopping timer:', error)
+      toast.error('Error al pausar el timer')
+    }
+  }
+
+  const handleAddTime = async (minutes: number) => {
+    try {
+      await addTimeToTimer(session.id, minutes * 60)
+      toast.success(`+${minutes} minutos agregados`)
+    } catch (error) {
+      console.error('Error adding time:', error)
+      toast.error('Error al agregar tiempo')
+    }
+  }
+
+  const handleResetTimer = async () => {
+    try {
+      await resetTimer(session.id)
+      toast.info('Timer reiniciado')
+    } catch (error) {
+      console.error('Error resetting timer:', error)
+      toast.error('Error al reiniciar el timer')
+    }
+  }
+
+  // Calculate remaining time
+  useEffect(() => {
+    if (!session.timer_is_active || !session.timer_started_at) {
+      if (session.timer_duration > 0 && !session.timer_is_active) {
+        setTimeRemaining(session.timer_duration)
+      } else {
+        setTimeRemaining(0)
+      }
+      return
+    }
+
+    const calculateTimeRemaining = () => {
+      const startTime = new Date(session.timer_started_at!).getTime()
+      const now = Date.now()
+      const elapsed = Math.floor((now - startTime) / 1000)
+      const remaining = Math.max(0, session.timer_duration - elapsed)
+      setTimeRemaining(remaining)
+
+      // Timer finished
+      if (remaining === 0 && session.timer_is_active) {
+        // Play sound
+        if (timerSoundRef.current) {
+          timerSoundRef.current.play().catch(() => {})
+        }
+        
+        // Show toast
+        toast.error('⏰ ¡Tiempo terminado!', {
+          duration: 5000,
+          description: 'El tiempo de la sesión ha finalizado',
+        })
+
+        // Stop timer in database
+        stopTimer(session.id).catch(console.error)
+      }
+    }
+
+    calculateTimeRemaining()
+    const interval = setInterval(calculateTimeRemaining, 1000)
+
+    return () => clearInterval(interval)
+  }, [session.timer_is_active, session.timer_started_at, session.timer_duration, session.id])
+
+  // Format time for display
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
   const copySessionCode = () => {
@@ -283,6 +389,20 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
                   </span>
                 </div>
 
+                {/* Timer Display */}
+                {timeRemaining > 0 && (
+                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-lg ${
+                    timeRemaining <= 60 && session.timer_is_active
+                      ? 'bg-red-100 text-red-700 animate-pulse'
+                      : session.timer_is_active
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    <Timer className="h-5 w-5" />
+                    {formatTime(timeRemaining)}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2">
                   <div className="bg-purple-100 px-4 py-2 rounded-lg">
                     <span className="text-xs text-gray-600">Código:</span>
@@ -305,13 +425,23 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
                 </div>
 
                 {participant.is_moderator && (
-                  <Button
-                    onClick={handleFinishSession}
-                    variant="destructive"
-                    size="sm"
-                  >
-                    Finalizar Sesión
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => setShowTimerConfig(!showTimerConfig)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Timer className="h-4 w-4 mr-2" />
+                      Timer
+                    </Button>
+                    <Button
+                      onClick={handleFinishSession}
+                      variant="destructive"
+                      size="sm"
+                    >
+                      Finalizar Sesión
+                    </Button>
+                  </>
                 )}
 
                 <Button
@@ -326,6 +456,90 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Timer Configuration Panel (Moderator Only) */}
+        {participant.is_moderator && showTimerConfig && (
+          <Card className="border-2 border-blue-300 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Timer className="h-5 w-5" />
+                Configuración del Timer
+              </CardTitle>
+              <CardDescription>
+                Controla el tiempo de la sesión. Todos los participantes verán el timer.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Start Timer */}
+              {!session.timer_is_active && timeRemaining === 0 && (
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-700 block mb-2">
+                      Duración (minutos)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="120"
+                      value={timerInputMinutes}
+                      onChange={(e) => setTimerInputMinutes(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <Button onClick={handleStartTimer} className="bg-green-600 hover:bg-green-700">
+                    <Play className="h-4 w-4 mr-2" />
+                    Iniciar
+                  </Button>
+                </div>
+              )}
+
+              {/* Timer Controls */}
+              {(session.timer_is_active || timeRemaining > 0) && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-gray-200">
+                    <div>
+                      <p className="text-sm text-gray-600">Tiempo restante</p>
+                      <p className="text-3xl font-bold text-gray-800">{formatTime(timeRemaining)}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      {session.timer_is_active ? (
+                        <Button onClick={handleStopTimer} variant="outline" size="sm">
+                          <Pause className="h-4 w-4 mr-1" />
+                          Pausar
+                        </Button>
+                      ) : (
+                        <Button onClick={() => startTimer(session.id, timeRemaining)} className="bg-green-600 hover:bg-green-700" size="sm">
+                          <Play className="h-4 w-4 mr-1" />
+                          Reanudar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Add Time Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => handleAddTime(1)} variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-1" />
+                      +1 min
+                    </Button>
+                    <Button onClick={() => handleAddTime(5)} variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-1" />
+                      +5 min
+                    </Button>
+                    <Button onClick={() => handleAddTime(10)} variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-1" />
+                      +10 min
+                    </Button>
+                    <Button onClick={handleResetTimer} variant="destructive" size="sm">
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      Reiniciar
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Wheel Section */}
@@ -545,6 +759,8 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
           </div>
         </div>
       </div>
+      {/* Hidden audio for timer alert */}
+      <audio ref={timerSoundRef} src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuFzvLZijoIHWm98OWhUBEPVqzn77BgGQk8j" preload="auto" />
     </div>
   )
 }

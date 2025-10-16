@@ -5,10 +5,13 @@ CREATE TABLE sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code VARCHAR(8) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
-  moderator_name VARCHAR(100) NOT NULL,
+  moderator_name VARCHAR(255) NOT NULL,
   status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'finished')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  finished_at TIMESTAMP WITH TIME ZONE
+  finished_at TIMESTAMP WITH TIME ZONE,
+  timer_duration INTEGER DEFAULT 0, -- Duración del timer en segundos
+  timer_started_at TIMESTAMP WITH TIME ZONE, -- Cuándo inició el timer
+  timer_is_active BOOLEAN DEFAULT false -- Si el timer está corriendo
 );
 
 -- Tabla de Participantes

@@ -8,6 +8,9 @@ export interface Session {
   status: 'active' | 'finished';
   created_at: string;
   finished_at: string | null;
+  timer_duration: number;
+  timer_started_at: string | null;
+  timer_is_active: boolean;
 }
 
 export interface Participant {

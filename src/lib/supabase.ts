@@ -271,6 +271,78 @@ export async function getMyVote(sessionId: string, voterId: string) {
   return data || null;
 }
 
+// Funciones de Timer
+export async function startTimer(sessionId: string, durationInSeconds: number) {
+  const { data, error } = await supabase
+    .from('sessions')
+    .update({
+      timer_duration: durationInSeconds,
+      timer_started_at: new Date().toISOString(),
+      timer_is_active: true
+    })
+    .eq('id', sessionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function stopTimer(sessionId: string) {
+  const { data, error } = await supabase
+    .from('sessions')
+    .update({
+      timer_is_active: false
+    })
+    .eq('id', sessionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function addTimeToTimer(sessionId: string, additionalSeconds: number) {
+  // Obtener el timer actual
+  const { data: session, error: fetchError } = await supabase
+    .from('sessions')
+    .select('timer_duration')
+    .eq('id', sessionId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const newDuration = (session.timer_duration || 0) + additionalSeconds;
+
+  const { data, error } = await supabase
+    .from('sessions')
+    .update({
+      timer_duration: newDuration
+    })
+    .eq('id', sessionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function resetTimer(sessionId: string) {
+  const { data, error } = await supabase
+    .from('sessions')
+    .update({
+      timer_duration: 0,
+      timer_started_at: null,
+      timer_is_active: false
+    })
+    .eq('id', sessionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 // Generar código de sesión simple (6 caracteres alfanuméricos)
 function generateSessionCode(): string {
   const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
