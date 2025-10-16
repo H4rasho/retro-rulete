@@ -677,19 +677,31 @@ export default function RetroWheelCollaborative({session, participant}: Props) {
                   </p>
 
                   <div className="space-y-3">
-                    <label
-                      htmlFor="answer"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      Escribe tu respuesta:
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label
+                        htmlFor="answer"
+                        className="text-sm font-medium text-gray-700"
+                      >
+                        Escribe tu respuesta:
+                      </label>
+                      <span className={`text-sm font-medium ${
+                        currentAnswer.length > 750 
+                          ? 'text-red-600' 
+                          : currentAnswer.length > 600 
+                          ? 'text-orange-600' 
+                          : 'text-gray-500'
+                      }`}>
+                        {currentAnswer.length}/800
+                      </span>
+                    </div>
                     <Textarea
                       id="answer"
                       placeholder="Comparte tus pensamientos con el equipo..."
                       value={currentAnswer}
                       onChange={e => setCurrentAnswer(e.target.value)}
-                      rows={4}
-                      className="w-full resize-none"
+                      maxLength={800}
+                      rows={8}
+                      className="w-full resize-none text-base"
                     />
                     <div className="flex gap-2">
                       <Button
